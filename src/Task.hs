@@ -30,16 +30,25 @@ main = do
   twz <- getTimeWithZone
   name <- getProgName
   args <- getArgs
-
-  let dispatch (cmd:argsForCmd) =
-        case Map.lookup cmd (commandMap name twz)  of
+  let cmdMap = commandMap name twz
+      dispatch (cmd:argsForCmd) =
+        case Map.lookup cmd cmdMap  of
           Just cmd -> cmdHandler cmd argsForCmd
           Nothing -> printf "%s: '%s' is not a command. See '%s --help'.\n" name cmd name
   when (wantsHelp args) $ do
     putStr $ topLevelHelp name twz
     exitWith ExitSuccess
+  let (cmd:restArgs) = args
+  when (cmd == "help" && length restArgs > 0) $ do
+    putStrLn $ helpFor (head restArgs) cmdMap
+    exitWith ExitSuccess
   -- now dispatch
   dispatch args
+
+helpFor :: String -> Map String Command -> String
+helpFor cmd cmdMap = case Map.lookup cmd cmdMap of
+  Just cmd -> cmdHelp cmd
+  Nothing  -> printf "Can't get help for unknown command '%s'" cmd
 
 --------------
 
@@ -52,7 +61,8 @@ commands :: String -> TimeWithZone -> [Command]
 commands name twz =
   [ Cmd "start"
         "Start a new task"
-        (usageInfo (printf "%s start" name) (startCmdOpts twz))
+        (usageInfo (printf "Usage: %s start [<flags>...]\n\nFlags:" name)
+                   (startCmdOpts twz))
         (startCmd twz)
   , Cmd "finish"
         "Finish current task"
@@ -79,7 +89,6 @@ commands name twz =
 commandMap :: String -> TimeWithZone -> Map String Command
 commandMap name twz = foldl (\m cmd -> Map.insert (cmdId cmd) cmd m) Map.empty (commands name twz)
 
-
 -----------
 
 topLevelHelp :: String -> TimeWithZone -> String
@@ -100,12 +109,12 @@ getTimeWithZone = do
   return $ TimeWithZone t tz
 
 wantsHelp :: [String] -> Bool
-wantsHelp args = containsHelp args || length args == 0
+wantsHelp args = containsHelp args || length args == 0 || (head args == "help" && length args == 1)
 
 containsHelp :: [String] -> Bool
 containsHelp = any pred
   where
-    pred s = any (eq s) ["-h", "--help", "help", "-?"]
+    pred s = any (eq s) ["-h", "--help", "-?"]
     eq s s' = strip s == s'
 ------------------------------
 
