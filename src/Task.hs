@@ -9,94 +9,109 @@ module Main where
 import Data.Aeson
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Time
-import System.Locale (defaultTimeLocale)
 import Data.Maybe
 import Text.Printf
+import System.Console.GetOpt
+import System.Environment (getArgs, getProgName)
+import Control.Monad
+import System.Exit
+import Data.Map (Map)
+import qualified Data.Map as Map
+
 
 -- friends
-import System.Console.GetOpt
-
-
---
--- | Flags for the "start" command
---
-data StartCmdFlag =
-  StartCmdTime  LocalTime
---
--- | Flags for the "modify" command
---
-data ModifyCmdFlag =
-    ModifyCmdId     Text
-  | ModifyCmdStart  LocalTime
-  | ModifyCmdFinish LocalTime
-
-
-data CurrentTime = CurrentTime UTCTime TimeZone
-
---
--- Given a UTCTime (to determine what day it is) and a TimeZone returns option descriptions
--- for the start command
---
-startCmdOpts :: CurrentTime -> [OptDescr (Either Text StartCmdFlag)]
-startCmdOpts ct = [
-    Option "t" ["time"] (OptArg timeToStartCmd "time") "start at time"
-  ]
-  where
-    timeToStartCmd :: Maybe String -> Either Text StartCmdFlag
-    timeToStartCmd = maybe (Left "No time argument") parseTheTime
-      where
-        parseTheTime :: String -> Either Text StartCmdFlag
-        parseTheTime s = case parseTaskTime ct s of
-          Nothing      -> Left (T.pack . printf "Could not parse time `%s'" $ s)
-          Just utcTime -> Right . StartCmdTime $ utcTime
-
---
--- Parse the task time, trying a variety of different formats.
---
-parseTaskTime :: CurrentTime -> String -> Maybe LocalTime
-parseTaskTime (CurrentTime t tz) s
-  | Just lt <- p "%Y-%m-%d %l:%M" full = Just lt
-  | Just lt <- p "%Y-%m-%d %l:%M" s    = Just lt
-  | Just lt <- p "%e %b %Y %l:%M" s    = Just lt
-  | Just lt <- p "%e %B %Y %l:%M" s    = Just lt
-  | Just lt <- p "%e %M %Y %l:%M" s    = Just lt
-  | otherwise                          = Nothing
-
-  where
-    p fmt = parseTime defaultTimeLocale fmt
-    full  = formatTime defaultTimeLocale "%Y-%m-%d" t ++ " " ++ s
-
-
--- modifyCmdOpts :: [OptDescr ModifyCmdFlag]
--- modifyCmdOpts = [
---   Option "i" ["id"] (OptArg idToStardCmd "stringy") "id of entry"
---   ]
-
--- commands :: [(Text, [OptDescr Text])]
--- commands =
---   [ ("start",
---      [ Option "i" ["id"] (OptArg ) ()])
---   , ("finish", [])
---   , ("modify", [])
---   , ("query",  [])
---   , ("export", [])
---   ]
+import StringUtils
+import Time
+import StartCmd 
+import ModifyCmd
 
 main :: IO ()
 main = do
-  ct <- mkCurrentTime
-  putStr $ usageInfo "Header" (startCmdOpts ct)
+  twz <- getTimeWithZone
+  name <- getProgName
+  args <- getArgs
 
-mkCurrentTime :: IO CurrentTime
-mkCurrentTime = do
+  let dispatch (cmd:argsForCmd) =
+        case Map.lookup cmd (commandMap name twz)  of
+          Just cmd -> cmdHandler cmd argsForCmd
+          Nothing -> printf "%s: '%s' is not a command. See '%s --help'.\n" name cmd name
+  when (wantsHelp args) $ do
+    putStr $ topLevelHelp name twz
+    exitWith ExitSuccess
+  -- now dispatch
+  dispatch args
+
+--------------
+
+data Command = Cmd { cmdId :: String
+                   , cmdDesc :: String
+                   , cmdHelp :: String
+                   , cmdHandler :: [String] -> IO () }
+
+commands :: String -> TimeWithZone -> [Command]
+commands name twz =
+  [ Cmd "start"
+        "Start a new task"
+        (usageInfo (printf "%s start" name) (startCmdOpts twz))
+        (startCmd twz)
+  , Cmd "finish"
+        "Finish current task"
+        (error "not defined")
+        undefined
+  , Cmd "modify"
+        "Modify a task entry"
+        (error "not defined")
+        undefined
+  , Cmd "delete"
+        "Delete a task entry"
+        (error "not defined")
+        undefined
+  , Cmd "query"
+        "Query task entries"
+        (error "not defined")
+        undefined
+  , Cmd "export"
+        "Export task data in a variety of formats"
+        (error "not defined")
+        undefined
+  ]
+
+commandMap :: String -> TimeWithZone -> Map String Command
+commandMap name twz = foldl (\m cmd -> Map.insert (cmdId cmd) cmd m) Map.empty (commands name twz)
+
+
+-----------
+
+topLevelHelp :: String -> TimeWithZone -> String
+topLevelHelp name twz = unlines $ [
+    printf "Usage: %s <command> <flags...>" name
+  , ""
+  , "Commands:"
+  ] ++ (indent 2 . twoColumns 4 $ map f $ commands name twz) ++
+  [ ""
+  , printf "See '%s help <command>' for more information on a specific command." name]
+
+ where f cmd = (cmdId cmd, cmdDesc cmd)
+
+getTimeWithZone :: IO TimeWithZone
+getTimeWithZone = do
   t <- getCurrentTime
   tz <- getCurrentTimeZone
-  return $ CurrentTime t tz
+  return $ TimeWithZone t tz
+
+wantsHelp :: [String] -> Bool
+wantsHelp args = containsHelp args || length args == 0
+
+containsHelp :: [String] -> Bool
+containsHelp = any pred
+  where
+    pred s = any (eq s) ["-h", "--help", "help", "-?"]
+    eq s s' = strip s == s'
+------------------------------
 
 test :: IO ()
 test = do
-  ct@(CurrentTime _ tz) <- mkCurrentTime
+  ct@(TimeWithZone _ tz) <- getTimeWithZone
   let mtime = parseTaskTime ct "00:23"
   case mtime of
     Just time -> printf "Local: %s\nUTC: %s\n" (show time) (show $ localTimeToUTC tz time)

@@ -38,10 +38,25 @@ task modify <flags>
 ### Flags
 
 ~~~
-  --id <id>              Modify the task with current id <id>
+  --id <id>              Modify the task with id <id>
   -s, --start <start>    Modify start time to <start>
   -f, --finish <finish>  Modify finish time to <finish>
 ~~~
+
+## `task delete`
+
+### Usage
+
+~~~
+task delete <flags>
+~~~
+
+### Flags
+
+~~~
+  -- id <id>    Delete the task with id <id>
+~~~
+
 
 ## `task query`
 
