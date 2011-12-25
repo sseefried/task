@@ -6,24 +6,21 @@
 module Main where
 
 -- library imports
-import Data.Aeson
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Maybe
 import Text.Printf
-import System.Console.GetOpt
 import System.Environment (getArgs, getProgName)
 import Control.Monad
 import System.Exit
 import Data.Map (Map)
 import qualified Data.Map as Map
 
-
 -- friends
 import StringUtils
 import Time
 import StartCmd 
 import ModifyCmd
+import GetOpt
 
 main :: IO ()
 main = do
