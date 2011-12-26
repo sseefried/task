@@ -32,8 +32,10 @@ import qualified Data.Sequence as S
 
 import Data.Maybe -- FIXME: Debug
 
+
 -- friends
-import Record
+import Record (Record(..), RecordSet)
+import qualified Record as R
 
 instance FromJSON Record where
   parseJSON (Object v) =
@@ -47,30 +49,35 @@ instance ToJSON Record where
   toJSON (Record id start finish keyValues) =
     object ["id" .= id, "start" .= start, "finish" .= finish, "key_values" .= keyValues]
 
-parseRecord :: BS.ByteString -> Either String Record
+--
+-- Parse a record and return either the record or an error and the remainder of the input (if any)
+--
+parseRecord :: BS.ByteString -> (Either String Record, BS.ByteString)
 parseRecord bs =
   case AP.parse json bs of
-    AP.Done rest r -> parseEither parseJSON r :: Either String Record
-    AP.Partial _   -> Left "Unexpected end of input"
-    AP.Fail s _ _  -> Left (printf "Error near: '%s'" (BS.unpack s))
+    AP.Done rest r -> case parseEither parseJSON r of
+      Left err -> (Left err,            rest)
+      Right r  -> (R.validateRecord r,  rest)
+    AP.Partial _   -> (Left "Unexpected end of input", "")
+    AP.Fail s _ _  -> (Left (printf "Error near: '%s'" (BS.unpack s)), "")
 
-parseRecords :: BS.ByteString -> Either [String] (Map UTCTime Record)
-parseRecords s = if not (null errs) then Left errs else Right (toMap records)
+
+parseRecords :: BS.ByteString -> Either [String] RecordSet
+parseRecords str = go 1 str [] R.empty
   where
-    (errs, records) = partitionEithers . addLineNumbers . map (second parseRecord) $ lines
-    lines :: [(Int, BS.ByteString)]
-    lines = zip [1..] (BS.splitWith (=='\n') s)
-    toMap :: [Record] -> Map UTCTime Record
-    toMap = foldl ins M.empty
-    ins m r = M.insert (recStart r) r m
+    go :: Int -> BS.ByteString -> [String] -> RecordSet -> Either [String] RecordSet
+    go lineNumber s errs rs
+      | BS.all whiteSpace s = if null errs then Right rs else Left (reverse errs)
+      | otherwise =
+        case result of
+          Left err -> go (lineNumber+1) s' (addLineNumber err:errs) rs
+          Right r  -> case rs `R.add` r of
+            Left  err -> go (lineNumber+1) s' (addLineNumber err:errs) rs
+            Right rs' -> go (lineNumber+1) s' errs rs'
+        where
+          (result, s') = parseRecord s
+          whiteSpace c = c `elem` "\n\r\t\f "
+          addLineNumber err = printf "%d:%s" lineNumber err
 
-addLineNumbers :: [(Int, Either String Record)] -> [Either String Record]
-addLineNumbers = map f
-  where
-    f :: (Int, Either String Record) -> Either String Record
-    f (i, eitherRecord) = case eitherRecord of
-      Left err -> Left (printf "%d: %s" i err)
-      Right r  -> Right r
-
-parseRecordFile :: FilePath -> IO (Either [String] (Map UTCTime Record))
+parseRecordFile :: FilePath -> IO (Either [String] RecordSet)
 parseRecordFile path = BS.readFile path >>= (return . parseRecords)
