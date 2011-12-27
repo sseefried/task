@@ -8,7 +8,7 @@
 -- | Defines data type and function for the 'Record' data type.
 --
 module ParseRecords (
-  readRecordSet
+  readRecordSet, writeRecordSet
 ) where
 
 -- standard libraries
@@ -17,13 +17,14 @@ import Data.Aeson.Types                       (parseEither)
 import Control.Monad                          (mzero, when, liftM)
 import Control.Applicative
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy.Char8 as BSL
 import qualified Data.Attoparsec as AP
 import Data.Either                            (either)
 import Data.Maybe                             (isNothing)
+import Data.List                              (intersperse)
 import Text.Printf                            (printf)
 import Prelude hiding (null)
 import qualified Prelude as P
-import System.IO                              (writeFile)
 import System.Exit                            (exitWith, ExitCode(..))
 import System.Environment                     (getEnv, getEnvironment)
 import System.Directory                       (doesDirectoryExist)
@@ -107,22 +108,30 @@ parseCurrentRecordFile :: FilePath -> IO (Maybe CurrentRecord)
 parseCurrentRecordFile path = BS.readFile path >>= (return . parseCurrentRecord)
 
 --
--- | Reads the 'RecordSet' from the relevant files.
+-- Returns (<recordFilePath>, <currentRecordFilePath>)
 --
--- Exits with failure on a number of erroneous conditions.
---
-readRecordSet :: IO RecordSet
-readRecordSet = do
+checkAndGetFilePaths :: IO (String, String)
+checkAndGetFilePaths = do
   env     <- getEnvironment
   exitWithErrorIf (isNothing $ lookup taskDirEnvVar env)
     (printf "%s environment variable does not exist" taskDirEnvVar)
   taskDir <- getEnv taskDirEnvVar
   exitWithErrorIf (P.null taskDir)
     (printf "%s environment variable is empty" taskDirEnvVar)
-  exitWithErrorIf' (liftM not . doesDirectoryExist $ taskDir)
+  exitWithErrorIfM (liftM not . doesDirectoryExist $ taskDir)
     (printf "%s directory '%s' does not exist" taskDirEnvVar taskDir)
   let recordsFilePath       = taskDir </> recordsFile
       currentRecordFilePath = taskDir </> currentRecordFile
+  return (recordsFilePath, currentRecordFilePath)
+
+--
+-- | Reads the 'RecordSet' from the relevant files.
+--
+-- Exits with failure on a number of erroneous conditions.
+--
+readRecordSet :: IO RecordSet
+readRecordSet = do
+  (recordsFilePath, currentRecordFilePath) <- checkAndGetFilePaths
   createFileIfMissing recordsFilePath
   createFileIfMissing currentRecordFilePath
   eitherRS  <- parseRecordFile recordsFilePath
@@ -130,14 +139,31 @@ readRecordSet = do
   mbCurrent <- parseCurrentRecordFile currentRecordFilePath
   return $ maybe rs (setCurrent rs) mbCurrent -- possibly add the current record
   where
-    createFileIfMissing path = do
-      exists <- fileExist path
-      when (not exists) $ do
-        printf "'%s' does not exist. Creating.\n" path
-        writeFile path ""
-    exitWithErrorIf condition reason = when condition $ do
-      putStrLn reason
-      exitWith (ExitFailure 1)
-    exitWithErrorIf' ioCond reason = ioCond >>= \b -> exitWithErrorIf b reason
     getOrExitWithError :: Either String a -> IO a
     getOrExitWithError = either (\s -> putStr s >> exitWith (ExitFailure 1)) return
+
+writeRecordSet :: RecordSet -> IO ()
+writeRecordSet rs = do
+  (recordsFilePath, currentRecordFilePath) <- checkAndGetFilePaths
+  -- TODO: Could be a bit slow. Make faster
+  BSL.writeFile recordsFilePath (BSL.concat . intersperse "\n" .
+                                 map (encode . toJSON) $ records rs)
+  case getCurrent rs of
+    Just cr -> BSL.writeFile currentRecordFilePath (encode . toJSON $ cr)
+    Nothing -> return ()
+
+-- Some helpers
+
+exitWithErrorIf :: Bool -> String -> IO ()
+exitWithErrorIf condition reason = when condition $ do
+  putStrLn reason
+  exitWith (ExitFailure 1)
+
+exitWithErrorIfM :: IO Bool -> String -> IO ()
+exitWithErrorIfM ioCond reason = ioCond >>= \b -> exitWithErrorIf b reason
+
+createFileIfMissing path = do
+  exists <- fileExist path
+  when (not exists) $ do
+    printf "'%s' does not exist. Creating.\n" path
+    writeFile path ""
