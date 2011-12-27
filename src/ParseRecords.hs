@@ -30,11 +30,13 @@ import Text.Printf
 import Data.Sequence (Seq)
 import qualified Data.Sequence as S
 
+import Prelude hiding (null)
+import qualified Prelude as P
+
 import Data.Maybe -- FIXME: Debug
 
-
 -- friends
-import Record (Record(..), RecordSet)
+import Record
 import qualified Record as R
 
 instance FromJSON Record where
@@ -49,6 +51,16 @@ instance ToJSON Record where
   toJSON (Record id start finish keyValues) =
     object ["id" .= id, "start" .= start, "finish" .= finish, "key_values" .= keyValues]
 
+instance FromJSON CurrentRecord where
+  parseJSON (Object v) =
+    CurrentRecord <$> (v .: "start"      >>= parseJSON)
+                  <*> (v .: "key_values" >>= parseJSON)
+  parseJSON _ = mzero
+
+instance ToJSON CurrentRecord where
+  toJSON (CurrentRecord start keyValues) =
+    object [ "start" .= start, "key_values" .= keyValues ]
+
 --
 -- Parse a record and return either the record or an error and the remainder of the input (if any)
 --
@@ -59,15 +71,19 @@ parseRecord bs =
       Left err -> (Left err,            rest)
       Right r  -> (R.validateRecord r,  rest)
     AP.Partial _   -> (Left "Unexpected end of input", "")
-    AP.Fail s _ _  -> (Left (printf "Error near: '%s'" (BS.unpack s)), "")
+    AP.Fail s _ _  -> (Left (printf "Error near: '%s'"
+                       (BS.unpack . BS.takeWhile (not . (=='\n')) $ s)), "")
 
-
+--
+-- FIXME: Records can actually be spread over multiple lines but we don't take that into account
+-- with our line numbers.
+--
 parseRecords :: BS.ByteString -> Either [String] RecordSet
 parseRecords str = go 1 str [] R.empty
   where
     go :: Int -> BS.ByteString -> [String] -> RecordSet -> Either [String] RecordSet
     go lineNumber s errs rs
-      | BS.all whiteSpace s = if null errs then Right rs else Left (reverse errs)
+      | BS.all whiteSpace s = if P.null errs then Right rs else Left (reverse errs)
       | otherwise =
         case result of
           Left err -> go (lineNumber+1) s' (addLineNumber err:errs) rs
@@ -81,3 +97,11 @@ parseRecords str = go 1 str [] R.empty
 
 parseRecordFile :: FilePath -> IO (Either [String] RecordSet)
 parseRecordFile path = BS.readFile path >>= (return . parseRecords)
+
+parseCurrentRecord :: BS.ByteString -> Maybe CurrentRecord
+parseCurrentRecord bs = case AP.parse json bs of
+  AP.Done rest r -> either (const Nothing) Just (parseEither parseJSON r)
+  _              -> Nothing
+
+parseCurrentRecordFile :: FilePath -> IO (Maybe CurrentRecord)
+parseCurrentRecordFile path = BS.readFile path >>= (return . parseCurrentRecord)

@@ -1,11 +1,13 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Record (
-  Record(..),
+  Record(..), CurrentRecord(..),
   -- functions on records
   overlap, validateRecord,
   -- abstract data type RecordSet
   RecordSet, 
   -- functions on RecordSet
-  insert, empty, length, head, last, null, add
+  insert, empty, length, head, last, null, add,
+  setCurrent, getCurrent, clearCurrent
 ) where
 
 -- standard libraries
@@ -25,10 +27,15 @@ import Text.Printf
 
 import Data.Maybe
 
-data Record = Record { recId        :: Text
-                     , recStart     :: UTCTime
-                     , recFinish    :: UTCTime
-                     , recKeyValues :: [ (Text, Text) ] } deriving Show
+data CurrentRecord =
+  CurrentRecord { crecStart     :: UTCTime
+                , crecKeyValues :: [ (Text, Text) ] } deriving Show
+
+data Record =
+  Record { recId        :: Text
+         , recStart     :: UTCTime
+         , recFinish    :: UTCTime
+         , recKeyValues :: [ (Text, Text) ] } deriving Show
 
 --
 -- Abstract data type for record sets
@@ -36,10 +43,13 @@ data Record = Record { recId        :: Text
 -- For now this is implemented with Data.Sequence but this is probably not the
 -- best considering the high cost of insertion.
 --
-data RecordSet = RecordSet { rsSeq :: Seq Record, rsMap :: Map Text Record }
+data RecordSet =
+  RecordSet { rsSeq     :: Seq Record
+            , rsMap     :: Map Text Record
+            , rsCurrent :: Maybe CurrentRecord}
 
 instance Show RecordSet where
-  show (RecordSet s _) = show s
+  show (RecordSet s _ c) = printf "RecordSet { rsSeq = %s, rsCurrent = %s }" (show s) (show c)
 
 --
 -- | 'insert p v s' inserts value 'v' at the first point in sequence 's'
@@ -62,7 +72,7 @@ findBetween start finish rs = toList . S.takeWhileL p . S.dropWhileL (not . p) $
     p r      = recStart r >= start && recFinish r <= finish
 
 empty :: RecordSet
-empty  = RecordSet S.empty M.empty
+empty  = RecordSet S.empty M.empty Nothing
 
 length :: RecordSet -> Int
 length = S.length . rsSeq
@@ -87,13 +97,36 @@ null = S.null . rsSeq
 --
 add :: RecordSet -> Record -> Either String RecordSet
 add rs r
-  | null rs             = Right $ rs { rsSeq = S.singleton r, rsMap = rsMap' }
+  | null rs             = Right $ rs |> r
   | notUniqueIn r rs    = Left (printf "Record ID %s is already in record set" (show $ recId r))
   | overlap (last rs) r = Left (printf "Records '%s' and '%s' overlap"
                                (show . last $ rs) (show r))
-  | otherwise           = Right $ rs { rsSeq = rsSeq rs S.|> r, rsMap = rsMap' }
-  where rsMap' = M.insert (recId r) r (rsMap rs)
+  | otherwise           = Right $ rs |> r
 
+
+--
+-- Sets the current record. If one already existed it is lost.
+--
+setCurrent :: RecordSet -> CurrentRecord -> RecordSet
+setCurrent rs cr = rs { rsCurrent = Just cr }
+
+getCurrent :: RecordSet -> Maybe CurrentRecord
+getCurrent = rsCurrent
+
+--
+-- Clears the current record.
+--
+clearCurrent :: RecordSet -> RecordSet
+clearCurrent rs = rs { rsCurrent = Nothing }
+
+
+--
+-- Adds record to the end of the sequence. Inserts the record into the rsMap
+--
+(|>) :: RecordSet -> Record -> RecordSet
+rs |> r = rs { rsSeq = rsSeq rs S.|> r, rsMap = M.insert (recId r) r (rsMap rs) }
+
+-------------
 
 notUniqueIn :: Record -> RecordSet -> Bool
 notUniqueIn r rs = isJust $ M.lookup (recId r) (rsMap rs)
