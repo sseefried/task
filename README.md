@@ -15,6 +15,7 @@ Flags:
 
 
 Usage:
+
 ~~~
   task finish
 ~~~
@@ -22,6 +23,7 @@ Usage:
   Finish the current task, if there is one.
   
 Flags:
+
 ~~~
   -t, --time <time>      finish at time as long as it is after start time and not in future.
 ~~~
