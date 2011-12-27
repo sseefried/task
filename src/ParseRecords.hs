@@ -7,35 +7,31 @@
 --
 -- | Defines data type and function for the 'Record' data type.
 --
-module ParseRecords where
+module ParseRecords (
+  readRecordSet
+) where
 
 -- standard libraries
 import Data.Aeson
-import Data.Aeson.Types (parseEither)
-import Data.Aeson.Encode (fromValue)
-import Blaze.ByteString.Builder (toByteString)
-import Data.Time
-import System.Locale (defaultTimeLocale)
-import Control.Monad (mzero)
+import Data.Aeson.Types                       (parseEither)
+import Control.Monad                          (mzero, when, liftM)
 import Control.Applicative
-import Data.Text (Text)
-import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Attoparsec as AP
-import Data.Map (Map)
-import qualified Data.Map as M
-import Control.Arrow
-import Data.Either
-import Text.Printf
-import Data.Sequence (Seq)
-import qualified Data.Sequence as S
-
+import Data.Either                            (either)
+import Data.Maybe                             (isNothing)
+import Text.Printf                            (printf)
 import Prelude hiding (null)
 import qualified Prelude as P
-
-import Data.Maybe -- FIXME: Debug
+import System.IO                              (writeFile)
+import System.Exit                            (exitWith, ExitCode(..))
+import System.Environment                     (getEnv, getEnvironment)
+import System.Directory                       (doesDirectoryExist)
+import System.Posix.Files                     (fileExist)
+import System.FilePath                        ((</>))
 
 -- friends
+import Config
 import Record
 import qualified Record as R
 
@@ -69,7 +65,7 @@ parseRecord bs =
   case AP.parse json bs of
     AP.Done rest r -> case parseEither parseJSON r of
       Left err -> (Left err,            rest)
-      Right r  -> (R.validateRecord r,  rest)
+      Right r  -> (validateRecord r,  rest)
     AP.Partial _   -> (Left "Unexpected end of input", "")
     AP.Fail s _ _  -> (Left (printf "Error near: '%s'"
                        (BS.unpack . BS.takeWhile (not . (=='\n')) $ s)), "")
@@ -78,8 +74,12 @@ parseRecord bs =
 -- FIXME: Records can actually be spread over multiple lines but we don't take that into account
 -- with our line numbers.
 --
-parseRecords :: BS.ByteString -> Either [String] RecordSet
-parseRecords str = go 1 str [] R.empty
+parseRecords :: BS.ByteString -> Either String RecordSet
+parseRecords str =
+  either
+    (Left . printf "ERROR: Couldn't parse records file '%s'\n%s" recordsFile . unlines)
+    Right
+    (go 1 str [] R.empty)
   where
     go :: Int -> BS.ByteString -> [String] -> RecordSet -> Either [String] RecordSet
     go lineNumber s errs rs
@@ -95,7 +95,7 @@ parseRecords str = go 1 str [] R.empty
           whiteSpace c = c `elem` "\n\r\t\f "
           addLineNumber err = printf "%d:%s" lineNumber err
 
-parseRecordFile :: FilePath -> IO (Either [String] RecordSet)
+parseRecordFile :: FilePath -> IO (Either String RecordSet)
 parseRecordFile path = BS.readFile path >>= (return . parseRecords)
 
 parseCurrentRecord :: BS.ByteString -> Maybe CurrentRecord
@@ -105,3 +105,39 @@ parseCurrentRecord bs = case AP.parse json bs of
 
 parseCurrentRecordFile :: FilePath -> IO (Maybe CurrentRecord)
 parseCurrentRecordFile path = BS.readFile path >>= (return . parseCurrentRecord)
+
+--
+-- | Reads the 'RecordSet' from the relevant files.
+--
+-- Exits with failure on a number of erroneous conditions.
+--
+readRecordSet :: IO RecordSet
+readRecordSet = do
+  env     <- getEnvironment
+  exitWithErrorIf (isNothing $ lookup taskDirEnvVar env)
+    (printf "%s environment variable does not exist" taskDirEnvVar)
+  taskDir <- getEnv taskDirEnvVar
+  exitWithErrorIf (P.null taskDir)
+    (printf "%s environment variable is empty" taskDirEnvVar)
+  exitWithErrorIf' (liftM not . doesDirectoryExist $ taskDir)
+    (printf "%s directory '%s' does not exist" taskDirEnvVar taskDir)
+  let recordsFilePath       = taskDir </> recordsFile
+      currentRecordFilePath = taskDir </> currentRecordFile
+  createFileIfMissing recordsFilePath
+  createFileIfMissing currentRecordFilePath
+  eitherRS  <- parseRecordFile recordsFilePath
+  rs        <- getOrExitWithError eitherRS
+  mbCurrent <- parseCurrentRecordFile currentRecordFilePath
+  return $ maybe rs (setCurrent rs) mbCurrent -- possibly add the current record
+  where
+    createFileIfMissing path = do
+      exists <- fileExist path
+      when (not exists) $ do
+        printf "'%s' does not exist. Creating.\n" path
+        writeFile path ""
+    exitWithErrorIf condition reason = when condition $ do
+      putStrLn reason
+      exitWith (ExitFailure 1)
+    exitWithErrorIf' ioCond reason = ioCond >>= \b -> exitWithErrorIf b reason
+    getOrExitWithError :: Either String a -> IO a
+    getOrExitWithError = either (\s -> putStr s >> exitWith (ExitFailure 1)) return
