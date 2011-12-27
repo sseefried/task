@@ -17,12 +17,21 @@ data TimeWithZone = TimeWithZone UTCTime TimeZone
 --
 parseTaskTime :: TimeWithZone -> String -> Maybe LocalTime
 parseTaskTime (TimeWithZone t tz) s
-  | Just lt <- p "%Y-%m-%d %l:%M" full = Just lt
-  | Just lt <- p "%Y-%m-%d %l:%M" s    = Just lt
-  | Just lt <- p "%e %b %Y %l:%M" s    = Just lt
-  | Just lt <- p "%e %B %Y %l:%M" s    = Just lt
-  | Just lt <- p "%e %M %Y %l:%M" s    = Just lt
-  | otherwise                          = Nothing
+  | Just lt <- p "%Y-%m-%d %l:%M" full    = Just lt
+  | Just lt <- p "%Y-%m-%d %l:%M:%S" full = Just lt
+
+  | Just lt <- p "%Y-%m-%d %l:%M" s       = Just lt
+  | Just lt <- p "%Y-%m-%d %l:%M:%S" s    = Just lt
+
+  | Just lt <- p "%e %b %Y %l:%M" s       = Just lt
+  | Just lt <- p "%e %b %Y %l:%M:%S" s    = Just lt
+
+  | Just lt <- p "%e %B %Y %l:%M" s       = Just lt
+  | Just lt <- p "%e %B %Y %l:%M:%S" s    = Just lt
+
+  | Just lt <- p "%e %M %Y %l:%M" s       = Just lt
+  | Just lt <- p "%e %M %Y %l:%M:%S" s    = Just lt
+  | otherwise                             = Nothing
 
   where
     p fmt = parseTime defaultTimeLocale fmt
