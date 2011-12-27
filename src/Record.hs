@@ -99,8 +99,11 @@ add :: RecordSet -> Record -> Either String RecordSet
 add rs r
   | null rs             = Right $ rs |> r
   | notUniqueIn r rs    = Left (printf "Record ID %s is already in record set" (show $ recId r))
-  | overlap (last rs) r = Left (printf "Records '%s' and '%s' overlap"
+  | overlap (last rs) r = Left (printf "Records overlap.\n  1. '%s'\n  2. '%s'"
                                (show . last $ rs) (show r))
+  | not (r `isAfter` last rs) =
+      Left (printf ("Record does not start at or after last record\n"++
+                   "  1. %s\n  2. %s\n") (show r) (show . last $ rs))
   | otherwise           = Right $ rs |> r
 
 
@@ -138,7 +141,11 @@ notUniqueIn r rs = isJust $ M.lookup (recId r) (rsMap rs)
 overlap :: Record -> Record -> Bool
 overlap r r' = inBoundary (recStart r') || inBoundary (recFinish r')
   where
-    inBoundary t = recStart r <= t && t <= recFinish r
+    inBoundary t = recStart r < t && t < recFinish r
+
+-- | Checks whether @r@ occurs after @r'@
+isAfter :: Record -> Record -> Bool
+isAfter r r' = recStart r >= recFinish r'
 
 --
 -- Either returns the record (because it is valid) or returns an error message.
