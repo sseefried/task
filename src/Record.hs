@@ -6,8 +6,8 @@ module Record (
   -- abstract data type RecordSet
   RecordSet, 
   -- functions on RecordSet
-  insert, empty, length, head, last, null, add,
-  setCurrent, getCurrent, clearCurrent
+  insert, empty, length, head, last, null, add, records,
+  setCurrent, current, clearCurrent
 ) where
 
 -- standard libraries
@@ -105,6 +105,10 @@ add rs r
       Left (printf ("Record does not start at or after last record\n"++
                    "  1. %s\n  2. %s\n") (show r) (show . last $ rs))
   | otherwise           = Right $ rs |> r
+
+records :: RecordSet -> [Record]
+records = toList . rsSeq
+
 
 
 --
