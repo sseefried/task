@@ -6,7 +6,7 @@ module Record (
   -- abstract data type RecordSet
   RecordSet, 
   -- functions on RecordSet
-  insert, empty, length, head, last, null, add, records,
+  insert, empty, length, head, last, null, add, records, findBetween,
   setCurrent, current, clearCurrent
 ) where
 
@@ -52,15 +52,21 @@ instance Show RecordSet where
   show (RecordSet s _ c) = printf "RecordSet { rsSeq = %s, rsCurrent = %s }" (show s) (show c)
 
 --
--- | 'insert p v s' inserts value 'v' at the first point in sequence 's'
---   where predicate 'p' is 'True'.
+-- | @insert r rs@ inserts record @r@ at the first point in sequence @rs@
+-- where @r@ is after a record.
 --
-insert :: (Record -> Bool) -> Record -> RecordSet -> RecordSet
-insert p r rs = rs  { rsSeq = (rsL S.|> r) S.>< rsR
-                    , rsMap = M.insert (recId r) r (rsMap rs)}
+insert :: Record -> RecordSet -> Either String RecordSet
+insert r rs
+  | canInsert = Right $ rs  { rsSeq = (rsL S.|> r) S.>< rsR
+                            , rsMap = M.insert (recId r) r (rsMap rs)}
+  | otherwise =
+    Left  $ printf "Record '%s' can't be inserted at any point in the record set" (show r)
   where
+    canInsert = case S.viewl rsR of
+                  S.EmptyL    -> True
+                  rR S.:< _   -> rR `isAfter` r
     s = rsSeq rs
-    (rsL,rsR) = S.breakl p s
+    (rsL,rsR) = S.breakl (r `isAfter`) s
 
 --
 -- | Finds all records that fit entirely between @start@ and @finish@ inclusive.
@@ -117,8 +123,8 @@ records = toList . rsSeq
 setCurrent :: RecordSet -> CurrentRecord -> RecordSet
 setCurrent rs cr = rs { rsCurrent = Just cr }
 
-getCurrent :: RecordSet -> Maybe CurrentRecord
-getCurrent = rsCurrent
+current :: RecordSet -> Maybe CurrentRecord
+current = rsCurrent
 
 --
 -- Clears the current record.

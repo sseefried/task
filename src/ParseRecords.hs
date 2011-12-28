@@ -148,7 +148,7 @@ writeRecordSet rs = do
   -- TODO: Could be a bit slow. Make faster
   BSL.writeFile recordsFilePath (BSL.concat . intersperse "\n" .
                                  map (encode . toJSON) $ records rs)
-  case getCurrent rs of
+  case current rs of
     Just cr -> BSL.writeFile currentRecordFilePath (encode . toJSON $ cr)
     Nothing -> return ()
 
