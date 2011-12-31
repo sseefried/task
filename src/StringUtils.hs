@@ -2,6 +2,7 @@ module StringUtils where
 
 import Data.List
 
+
 -- Removes all leading and trailing whitespace from a String
 strip :: String -> String
 strip = reverse . dropWhite . reverse . dropWhite

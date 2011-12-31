@@ -20,11 +20,12 @@ import StringUtils
 import Time
 import StartCmd 
 import ModifyCmd
+import ClearCmd
 import GetOpt
 
 main :: IO ()
 main = do
-  twz <- getTimeWithZone
+  twz <- getZonedTime
   name <- getProgName
   args <- getArgs
   let cmdMap = commandMap name twz
@@ -44,7 +45,7 @@ main = do
 
 helpFor :: String -> Map String Command -> String
 helpFor cmd cmdMap = case Map.lookup cmd cmdMap of
-  Just cmd -> cmdHelp cmd
+  Just cmd -> printf "%s\n\n%s" (cmdDesc cmd) (cmdHelp cmd)
   Nothing  -> printf "Can't get help for unknown command '%s'" cmd
 
 --------------
@@ -54,13 +55,22 @@ data Command = Cmd { cmdId :: String
                    , cmdHelp :: String
                    , cmdHandler :: [String] -> IO () }
 
-commands :: String -> TimeWithZone -> [Command]
+--
+-- Note to maintainer:
+--
+-- The 'cmdHelp' string should not end in a newline.
+--
+commands :: String -> ZonedTime -> [Command]
 commands name twz =
   [ Cmd "start"
         "Start a new task"
         (usageInfo (printf "Usage: %s start [<flags>...]\n\nFlags:" name)
                    (startCmdOpts twz))
         (startCmd twz)
+  , Cmd "clear"
+        "Clear current task"
+        (printf "Usage: %s clear" name)
+        clearCmd
   , Cmd "finish"
         "Finish current task"
         (error "not defined")
@@ -83,12 +93,12 @@ commands name twz =
         undefined
   ]
 
-commandMap :: String -> TimeWithZone -> Map String Command
+commandMap :: String -> ZonedTime -> Map String Command
 commandMap name twz = foldl (\m cmd -> Map.insert (cmdId cmd) cmd m) Map.empty (commands name twz)
 
 -----------
 
-topLevelHelp :: String -> TimeWithZone -> String
+topLevelHelp :: String -> ZonedTime -> String
 topLevelHelp name twz = unlines $ [
     printf "Usage: %s <command> <flags...>" name
   , ""
@@ -98,12 +108,6 @@ topLevelHelp name twz = unlines $ [
   , printf "See '%s help <command>' for more information on a specific command." name]
 
  where f cmd = (cmdId cmd, cmdDesc cmd)
-
-getTimeWithZone :: IO TimeWithZone
-getTimeWithZone = do
-  t <- getCurrentTime
-  tz <- getCurrentTimeZone
-  return $ TimeWithZone t tz
 
 wantsHelp :: [String] -> Bool
 wantsHelp args = containsHelp args || length args == 0 || (head args == "help" && length args == 1)
@@ -117,8 +121,9 @@ containsHelp = any pred
 
 test :: IO ()
 test = do
-  ct@(TimeWithZone _ tz) <- getTimeWithZone
-  let mtime = parseTaskTime ct "00:23"
+  zt <- getZonedTime
+  let mtime = parseTaskTime zt "00:23"
   case mtime of
-    Just time -> printf "Local: %s\nUTC: %s\n" (show time) (show $ localTimeToUTC tz time)
+    Just time -> printf "Local: %s\nUTC: %s\n"
+                   (show time) (show $ zonedTimeToUTC time)
     Nothing    -> return ()

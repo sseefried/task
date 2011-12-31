@@ -1,5 +1,3 @@
-This manual is formatted to 100 characters wide.
-
 # Commands
 
 ## task start
@@ -7,16 +5,20 @@ This manual is formatted to 100 characters wide.
 ### Usage
 
 ~~~
-task start <category> <description> <key/value...>
+task start <description> <key/value...>
 ~~~
 
-  Each key/value pair is of the form <key>:<value> where <key> and <value> are both JSON strings.
+
 
 ### Flags:
 
 ~~~
--t, --time <time>       start at time
+-t, --time <time>              start at time
+-k, --key-value=<key/value>    Add key/value pair
 ~~~
+
+Each key/value pair is of the form <key>:<value> where <key> and <value> are both JSON strings.
+
 ## task finish
 
 Finish the current task, if there is one.
@@ -103,8 +105,8 @@ task export <path>
 ### Flags
 
 ~~~
-  --csv    Export as CSV. Incompatible with --json
-  --json   Export as JSON. Incompatible with --csv
+--csv    Export as CSV. Incompatible with --json
+--json   Export as JSON. Incompatible with --csv
 ~~~
 
 # Appendix

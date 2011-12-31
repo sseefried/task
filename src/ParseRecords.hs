@@ -8,7 +8,7 @@
 -- | Defines data type and function for the 'Record' data type.
 --
 module ParseRecords (
-  readRecordSet, writeRecordSet
+  readRecordSet, writeRecordSet, readCurrentRecord, writeCurrentRecord, clearCurrentRecord
 ) where
 
 -- standard libraries
@@ -35,28 +35,32 @@ import System.FilePath                        ((</>))
 import Config
 import Record
 import qualified Record as R
+import Errors
 
 instance FromJSON Record where
   parseJSON (Object v) =
         Record <$> (v .: "id")
-               <*> (v .: "start"      >>= parseJSON)
-               <*> (v .: "finish"     >>= parseJSON)
-               <*> (v .: "key_values" >>= parseJSON)
+               <*> (v .: "description" >>= parseJSON)
+               <*> (v .: "start"       >>= parseJSON)
+               <*> (v .: "finish"      >>= parseJSON)
+               <*> (v .: "key_values"  >>= parseJSON)
   parseJSON _ = mzero
 
 instance ToJSON Record where
-  toJSON (Record id start finish keyValues) =
-    object ["id" .= id, "start" .= start, "finish" .= finish, "key_values" .= keyValues]
+  toJSON (Record id description start finish keyValues) =
+    object ["id" .= id, "description" .= description,
+            "start" .= start, "finish" .= finish, "key_values" .= keyValues]
 
 instance FromJSON CurrentRecord where
   parseJSON (Object v) =
-    CurrentRecord <$> (v .: "start"      >>= parseJSON)
-                  <*> (v .: "key_values" >>= parseJSON)
+    CurrentRecord <$> (v .: "description" >>= parseJSON)
+                  <*> (v .: "start"       >>= parseJSON)
+                  <*> (v .: "key_values"  >>= parseJSON)
   parseJSON _ = mzero
 
 instance ToJSON CurrentRecord where
-  toJSON (CurrentRecord start keyValues) =
-    object [ "start" .= start, "key_values" .= keyValues ]
+  toJSON (CurrentRecord description start keyValues) =
+    object [  "description" .= description, "start" .= start, "key_values" .= keyValues ]
 
 --
 -- Parse a record and return either the record or an error and the remainder of the input (if any)
@@ -67,8 +71,8 @@ parseRecord bs =
     AP.Done rest r -> case parseEither parseJSON r of
       Left err -> (Left err,            rest)
       Right r  -> (validateRecord r,  rest)
-    AP.Partial _   -> (Left "Unexpected end of input", "")
-    AP.Fail s _ _  -> (Left (printf "Error near: '%s'"
+    AP.Partial _   -> (Left "Unexpected end of input.", "")
+    AP.Fail s _ _  -> (Left (printf "Error near: '%s'."
                        (BS.unpack . BS.takeWhile (not . (=='\n')) $ s)), "")
 
 --
@@ -149,18 +153,25 @@ writeRecordSet rs = do
   BSL.writeFile recordsFilePath (BSL.concat . intersperse "\n" .
                                  map (encode . toJSON) $ records rs)
   case current rs of
-    Just cr -> BSL.writeFile currentRecordFilePath (encode . toJSON $ cr)
+    Just cr -> BSL.writeFile currentRecordFilePath . encode . toJSON $ cr
     Nothing -> return ()
 
+readCurrentRecord :: IO (Maybe CurrentRecord)
+readCurrentRecord = do
+  (_, currentRecordFilePath) <- checkAndGetFilePaths
+  parseCurrentRecordFile currentRecordFilePath
+
+writeCurrentRecord :: CurrentRecord -> IO ()
+writeCurrentRecord cr = do
+  (_, currentRecordFilePath) <- checkAndGetFilePaths
+  BSL.writeFile currentRecordFilePath . encode . toJSON $ cr
+
+clearCurrentRecord :: IO ()
+clearCurrentRecord = do
+  (_, currentRecordFilePath) <- checkAndGetFilePaths
+  BSL.writeFile currentRecordFilePath ""
+
 -- Some helpers
-
-exitWithErrorIf :: Bool -> String -> IO ()
-exitWithErrorIf condition reason = when condition $ do
-  putStrLn reason
-  exitWith (ExitFailure 1)
-
-exitWithErrorIfM :: IO Bool -> String -> IO ()
-exitWithErrorIfM ioCond reason = ioCond >>= \b -> exitWithErrorIf b reason
 
 createFileIfMissing path = do
   exists <- fileExist path

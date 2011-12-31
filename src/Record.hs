@@ -2,12 +2,13 @@
 module Record (
   Record(..), CurrentRecord(..),
   -- functions on records
-  overlap, validateRecord,
+  overlap, validateRecord, 
   -- abstract data type RecordSet
   RecordSet, 
   -- functions on RecordSet
+  newRecordId,
   insert, empty, length, head, last, null, add, records, findBetween,
-  setCurrent, current, clearCurrent
+  setCurrent, current, isCurrent, clearCurrent
 ) where
 
 -- standard libraries
@@ -26,13 +27,16 @@ import Data.Foldable (toList)
 import Text.Printf
 
 import Data.Maybe
+import System.Random (randomRIO)
 
 data CurrentRecord =
-  CurrentRecord { crecStart     :: UTCTime
+  CurrentRecord { crecDescr     :: Text -- description
+                , crecStart     :: UTCTime
                 , crecKeyValues :: [ (Text, Text) ] } deriving Show
 
 data Record =
   Record { recId        :: Text
+         , recDescr     :: Text -- Description
          , recStart     :: UTCTime
          , recFinish    :: UTCTime
          , recKeyValues :: [ (Text, Text) ] } deriving Show
@@ -50,6 +54,29 @@ data RecordSet =
 
 instance Show RecordSet where
   show (RecordSet s _ c) = printf "RecordSet { rsSeq = %s, rsCurrent = %s }" (show s) (show c)
+
+
+--
+-- | Creates a new unique Id for a record in a record set.
+-- 10 chars long. a-z
+--
+randomId :: IO Text
+randomId = do
+  s <- sequence $ map (const randomChar) [1..10]
+  return $ T.pack s
+  where
+    randomChar = randomRIO ('a','z')
+
+--
+-- Generate a unique identifier that has not been used before.
+--
+newRecordId :: RecordSet -> IO Text
+newRecordId rs = do
+  s <- randomId
+  case M.lookup s (rsMap rs) of
+     Just _  -> newRecordId rs
+     Nothing -> return s
+
 
 --
 -- | @insert r rs@ inserts record @r@ at the first point in sequence @rs@
@@ -125,6 +152,9 @@ setCurrent rs cr = rs { rsCurrent = Just cr }
 
 current :: RecordSet -> Maybe CurrentRecord
 current = rsCurrent
+
+isCurrent :: RecordSet -> Bool
+isCurrent = isJust . rsCurrent
 
 --
 -- Clears the current record.

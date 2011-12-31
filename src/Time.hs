@@ -9,14 +9,11 @@ import Data.Time
 import System.Locale (defaultTimeLocale)
 import Text.Printf
 
-data TimeWithZone = TimeWithZone UTCTime TimeZone
-
-
 --
 -- Parse the task time, trying a variety of different formats.
 --
-parseTaskTime :: TimeWithZone -> String -> Maybe LocalTime
-parseTaskTime (TimeWithZone t tz) s
+parseTaskTime :: ZonedTime -> String -> Maybe ZonedTime
+parseTaskTime zt s
   | Just lt <- p "%Y-%m-%d %l:%M" full    = Just lt
   | Just lt <- p "%Y-%m-%d %l:%M:%S" full = Just lt
 
@@ -34,5 +31,13 @@ parseTaskTime (TimeWithZone t tz) s
   | otherwise                             = Nothing
 
   where
-    p fmt = parseTime defaultTimeLocale fmt
-    full  = printf "%s %s" (formatTime defaultTimeLocale "%Y-%m-%d" t) s
+    tz = zonedTimeZone zt
+    p fmt s = fmap (flip ZonedTime tz) (parseTime defaultTimeLocale fmt s)
+    full    = printf "%s %s" (formatTime defaultTimeLocale "%Y-%m-%d" $ zonedTimeToLocalTime zt) s
+
+--
+-- Converts UTC to local time and then pretty prints it
+--
+prettyTime :: UTCTime -> TimeZone -> String
+prettyTime t tz = formatTime defaultTimeLocale "%a, %d %b %y %H:%M:%S"
+                    (utcToLocalTime tz t)
