@@ -77,6 +77,5 @@ getStartTime flags
 getKeyValues :: [StartCmdFlag] -> [(Text,Text)]
 getKeyValues = mapMaybe f
   where
-    f :: StartCmdFlag -> Maybe (Text,Text)
     f (StartCmdKeyValue p) = Just p
     f _                    = Nothing

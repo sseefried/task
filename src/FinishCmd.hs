@@ -1,0 +1,72 @@
+{-# LANGUAGE OverloadedStrings #-}
+module FinishCmd (
+  finishCmd, finishCmdOpts
+  ) where
+
+-- standard libraries
+
+-- import Data.Text (Text)
+-- import qualified Data.Text as T
+import Text.Printf
+-- import System.Exit
+-- import Control.Monad
+import Data.Time
+import Data.Maybe (mapMaybe, isJust)
+-- import Data.Either (either)
+--
+-- -- friends
+import GetOpt
+import Time
+import Errors
+import RecordSet
+import ParseOpts
+--
+import Record (Record)
+import qualified Record as R
+
+--
+-- | Flags for the "start" command
+--
+data FinishCmdFlag =
+    FinishCmdTime     ZonedTime
+
+
+--
+-- Given a UTCTime (to determine what day it is) and a TimeZone returns option descriptions
+-- for the start command
+--
+finishCmdOpts :: ZonedTime -> [OptDescr (Either String FinishCmdFlag)]
+finishCmdOpts zt =
+    [ Option "t" ["time"] (OptArg timeToFinishCmd "time") "finish at time" ]
+  where
+    timeToFinishCmd :: Maybe String -> Either String FinishCmdFlag
+    timeToFinishCmd = maybe (Left "You have not provided a time argument.") parseTheTime
+      where
+        parseTheTime :: String -> Either String FinishCmdFlag
+        parseTheTime s = case parseTaskTime zt s of
+          Nothing      -> Left (printf "Could not parse time string `%s'." $ s)
+          Just utcTime -> Right . FinishCmdTime $ utcTime
+
+
+finishCmd :: ZonedTime -> [String] -> IO ()
+finishCmd zt args = do
+  let (opts, nonOpts, errors) = getOptEither Permute (finishCmdOpts zt) args
+  exitWithErrorIf (length nonOpts > 0) (printf "Unknown parameters '%s'" (show nonOpts))
+  rs <- readRecordSet
+  exitWithErrorIf (not . R.isCurrent $ rs) "There is no current task. Run 'task start'."
+  finish        <- getFinishTime opts
+  rs' <- R.finishCurrent rs finish
+  writeRecordSet rs'
+  printf "Finishing current task at '%s'\n" (prettyTime finish (zonedTimeZone zt))
+
+
+-- FIXME: Check that time is not in the future.
+-- FIXME: Check that time is strictly after start time
+getFinishTime :: [FinishCmdFlag] -> IO UTCTime
+getFinishTime flags
+  | null utcTimes = getCurrentTime
+  | otherwise     = return . head $ utcTimes
+  where
+    utcTimes = mapMaybe f flags
+    f (FinishCmdTime zt) = Just . zonedTimeToUTC $ zt
+

@@ -8,7 +8,7 @@ module Record (
   -- functions on RecordSet
   newRecordId,
   insert, empty, length, head, last, null, add, records, findBetween,
-  setCurrent, current, isCurrent, clearCurrent
+  setCurrent, current, isCurrent, clearCurrent, finishCurrent
 ) where
 
 -- standard libraries
@@ -187,6 +187,27 @@ overlap r r' = inBoundary (recStart r') || inBoundary (recFinish r')
 isAfter :: Record -> Record -> Bool
 isAfter r r' = recStart r >= recFinish r'
 
+--
+-- Finishes the current task in the record set, if and only if,
+-- there is a current record. Otherwise returns the original
+-- RecordSet.
+--
+finishCurrent :: RecordSet -> UTCTime -> IO RecordSet
+finishCurrent rs t = do
+  i <- newRecordId rs
+  let maybeCR = current rs
+  case maybeCR of
+    Just cr -> do
+      let rs'     = clearCurrent rs
+          eitherRS = rs' `add` (Record { recId        = i
+                                       , recStart     = crecStart cr
+                                       , recFinish    = t
+                                       , recDescr     = crecDescr cr
+                                       , recKeyValues = crecKeyValues cr })
+      case eitherRS of
+        Left _     -> return rs -- return the original
+        Right rs'' -> return rs''
+    Nothing -> return rs
 --
 -- Either returns the record (because it is valid) or returns an error message.
 --

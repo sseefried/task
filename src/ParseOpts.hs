@@ -2,18 +2,29 @@ module ParseOpts where
 
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Attoparsec.Char8
+import Data.Aeson.Parser (jstring)
+import Data.Aeson
+import Control.Applicative
+import Data.ByteString.Char8 as BS
+import qualified Data.Attoparsec.Zepto as Z
+import Data.ByteString.Unsafe as B
+
 
 import Text.Printf
 
 import Data.Either
 
--- FIXME
 parseKeyValue :: String -> Either String (Text,Text)
-parseKeyValue s = Left (printf "Cannot parse key/value '%s'" s)
+parseKeyValue s = case parse parser . BS.pack  $ s of
+  Done _ r   -> Right r
+  Partial _  -> Left "Unexpected end of input on key/value pair"
+  Fail s _ _ -> Left (printf "Error parsing key/value near: '%s'."
+                     (BS.unpack . BS.takeWhile (not . (=='\n')) $ s))
 
--- parseKeyValues :: [String] -> Either String [(Text, Text)]
--- parseKeyValues ss
---   | null errors = Right kvs
---   | otherwise = Left . concat $ errors
---   where
---     (errors, kvs) = partitionEithers . map parseKeyValue $ ss
+  where
+    parser :: Parser (Text,Text)
+    parser = do
+      key   <- jstring <* char ':'
+      value <- jstring
+      return (key,value)

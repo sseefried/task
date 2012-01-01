@@ -18,23 +18,27 @@ import qualified Data.Map as Map
 -- friends
 import StringUtils
 import Time
+
+-- The commands
 import StartCmd 
 import ModifyCmd
 import ClearCmd
+import FinishCmd
+
 import GetOpt
 
 main :: IO ()
 main = do
-  twz <- getZonedTime
+  zt <- getZonedTime
   name <- getProgName
   args <- getArgs
-  let cmdMap = commandMap name twz
+  let cmdMap = commandMap name zt
       dispatch (cmd:argsForCmd) =
         case Map.lookup cmd cmdMap  of
           Just cmd -> cmdHandler cmd argsForCmd
           Nothing -> printf "%s: '%s' is not a command. See '%s --help'.\n" name cmd name
   when (wantsHelp args) $ do
-    putStr $ topLevelHelp name twz
+    putStr $ topLevelHelp name zt
     exitWith ExitSuccess
   let (cmd:restArgs) = args
   when (cmd == "help" && length restArgs > 0) $ do
@@ -61,20 +65,22 @@ data Command = Cmd { cmdId :: String
 -- The 'cmdHelp' string should not end in a newline.
 --
 commands :: String -> ZonedTime -> [Command]
-commands name twz =
+commands name zt =
   [ Cmd "start"
         "Start a new task"
         (usageInfo (printf "Usage: %s start [<flags>...]\n\nFlags:" name)
-                   (startCmdOpts twz))
-        (startCmd twz)
+                   (startCmdOpts zt))
+        (startCmd zt)
   , Cmd "clear"
         "Clear current task"
         (printf "Usage: %s clear" name)
         clearCmd
   , Cmd "finish"
         "Finish current task"
-        (error "not defined")
-        undefined
+        (usageInfo (printf "Usage: %s finish [<flags>...]\n\nFlags:" name)
+                   (finishCmdOpts zt))
+        (finishCmd zt)
+
   , Cmd "modify"
         "Modify a task entry"
         (error "not defined")
@@ -94,16 +100,16 @@ commands name twz =
   ]
 
 commandMap :: String -> ZonedTime -> Map String Command
-commandMap name twz = foldl (\m cmd -> Map.insert (cmdId cmd) cmd m) Map.empty (commands name twz)
+commandMap name zt = foldl (\m cmd -> Map.insert (cmdId cmd) cmd m) Map.empty (commands name zt)
 
 -----------
 
 topLevelHelp :: String -> ZonedTime -> String
-topLevelHelp name twz = unlines $ [
+topLevelHelp name zt = unlines $ [
     printf "Usage: %s <command> <flags...>" name
   , ""
   , "Commands:"
-  ] ++ (indent 2 . twoColumns 4 $ map f $ commands name twz) ++
+  ] ++ (indent 2 . twoColumns 4 $ map f $ commands name zt) ++
   [ ""
   , printf "See '%s help <command>' for more information on a specific command." name]
 
