@@ -72,7 +72,7 @@ parseRecord bs =
       Left err -> (Left err,            rest)
       Right r  -> (validateRecord r,  rest)
     AP.Partial _   -> (Left "Unexpected end of input.", "")
-    AP.Fail s _ _  -> (Left (printf "Error near: '%s'."
+    AP.Fail s _ _  -> (Left (printf "Error parsing record near: '%s'."
                        (BS.unpack . BS.takeWhile (not . (=='\n')) $ s)), "")
 
 --
