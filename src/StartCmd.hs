@@ -26,7 +26,7 @@ import qualified Record as R
 -- | Flags for the "start" command
 --
 data StartCmdFlag =
-    StartCmdTime     ZonedTime
+    StartCmdTime     UTCTime
   | StartCmdKeyValue (Text, Text)
 
 --
@@ -39,15 +39,13 @@ startCmdOpts zt =
     , Option "k" ["key-value"] (OptArg keyValueToStartCmd "key/value") "key/value" ]
   where
     timeToStartCmd :: Maybe String -> Either String StartCmdFlag
-    timeToStartCmd = maybe (Left "You have not provided a time argument.") parseTheTime
-      where
-        parseTheTime :: String -> Either String StartCmdFlag
-        parseTheTime s = case parseTaskTime zt s of
-          Nothing      -> Left (printf "Could not parse time string `%s'." $ s)
-          Just utcTime -> Right . StartCmdTime $ utcTime
+    timeToStartCmd = maybe (Left "You have not provided a time argument.")
+                           (either Left (Right . StartCmdTime) . parseTimeFlag zt)
     keyValueToStartCmd :: Maybe String -> Either String StartCmdFlag
     keyValueToStartCmd = maybe (Left "You have not provided a key/value argument.")
-                               (either Left (Right . StartCmdKeyValue) . parseKeyValue)
+                               (either Left (Right . StartCmdKeyValue) . parseKeyValueFlag)
+
+-- FIXME: Check that start time is after all things in the record set already.
 
 startCmd :: ZonedTime -> [String] -> IO ()
 startCmd zt args = do
@@ -71,7 +69,7 @@ getStartTime flags
   | otherwise     = return . head $ utcTimes
   where
     utcTimes = mapMaybe f flags
-    f (StartCmdTime zt) = Just . zonedTimeToUTC $ zt
+    f (StartCmdTime t) = Just t
     f _                 = Nothing
 
 getKeyValues :: [StartCmdFlag] -> [(Text,Text)]

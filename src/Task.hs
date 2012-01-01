@@ -131,5 +131,5 @@ test = do
   let mtime = parseTaskTime zt "00:23"
   case mtime of
     Just time -> printf "Local: %s\nUTC: %s\n"
-                   (show time) (show $ zonedTimeToUTC time)
+                   (show $ utcToZonedTime (zonedTimeZone zt) time) (show time)
     Nothing    -> return ()

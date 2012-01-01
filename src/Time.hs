@@ -3,7 +3,6 @@ module Time (
   module Data.Time,
   module Time) where
 
-
 -- standard libraries
 import Data.Time
 import System.Locale (defaultTimeLocale)
@@ -11,8 +10,9 @@ import Text.Printf
 
 --
 -- Parse the task time, trying a variety of different formats.
+-- Parses the time in local time but converts it to UTC time.
 --
-parseTaskTime :: ZonedTime -> String -> Maybe ZonedTime
+parseTaskTime :: ZonedTime -> String -> Maybe UTCTime
 parseTaskTime zt s
   | Just lt <- p "%Y-%m-%d %l:%M" full    = Just lt
   | Just lt <- p "%Y-%m-%d %l:%M:%S" full = Just lt
@@ -31,8 +31,8 @@ parseTaskTime zt s
   | otherwise                             = Nothing
 
   where
-    tz = zonedTimeZone zt
-    p fmt s = fmap (flip ZonedTime tz) (parseTime defaultTimeLocale fmt s)
+    tz      = zonedTimeZone zt
+    p fmt s = fmap (localTimeToUTC tz) (parseTime defaultTimeLocale fmt s)
     full    = printf "%s %s" (formatTime defaultTimeLocale "%Y-%m-%d" $ zonedTimeToLocalTime zt) s
 
 --
