@@ -146,15 +146,18 @@ readRecordSet = do
     getOrExitWithError :: Either String a -> IO a
     getOrExitWithError = either (\s -> putStr s >> exitWith (ExitFailure 1)) return
 
+--
+-- Writes the RecordSet to disk. This includes writing out the current record.
+--
 writeRecordSet :: RecordSet -> IO ()
 writeRecordSet rs = do
   (recordsFilePath, currentRecordFilePath) <- checkAndGetFilePaths
   -- TODO: Could be a bit slow. Make faster
   BSL.writeFile recordsFilePath (BSL.concat . intersperse "\n" .
                                  map (encode . toJSON) $ records rs)
-  case current rs of
-    Just cr -> BSL.writeFile currentRecordFilePath . encode . toJSON $ cr
-    Nothing -> return ()
+  let crStr = maybe "" (encode . toJSON) (current rs)
+  BSL.writeFile currentRecordFilePath crStr
+
 
 readCurrentRecord :: IO (Maybe CurrentRecord)
 readCurrentRecord = do
