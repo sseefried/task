@@ -7,7 +7,7 @@
 --
 -- | Defines data type and function for the 'Record' data type.
 --
-module ParseRecords (
+module RecordSet (
   readRecordSet, writeRecordSet, readCurrentRecord, writeCurrentRecord, clearCurrentRecord
 ) where
 

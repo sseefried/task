@@ -4,7 +4,7 @@ module ClearCmd where
 -- standard libraries
 
 -- friends
-import ParseRecords
+import RecordSet
 
 import Record (Record)
 import qualified Record as R

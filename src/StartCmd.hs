@@ -16,7 +16,7 @@ import Data.Either (either)
 import GetOpt
 import Time
 import Errors
-import ParseRecords
+import RecordSet
 import ParseOpts
 
 import Record (Record)
