@@ -56,8 +56,13 @@ startCmd zt args = do
   start        <- getStartTime opts
   let keyValues = getKeyValues opts
   let descr = T.pack $ nonOpts !! 0
-  cr <- readCurrentRecord
-  exitWithErrorIf (isJust cr) "There is already a current task. Run 'task clear'."
+  rs <- readRecordSet
+  exitWithErrorIf (isJust $ R.current rs) "There is already a current task. Run 'task clear'."
+  let lastFinish = R.recFinish . R.last $ rs
+  exitWithErrorIf (lastFinish >= start)
+    -- FIXME: Clean up
+    (printf "Can't start a task at this time since the last record's finish time is at '%s'."
+      (prettyTime lastFinish (zonedTimeZone zt)))
   writeCurrentRecord $ R.CurrentRecord descr start keyValues
   printf "Creating new task at '%s' with description '%s'.\n"
     (prettyTime start (zonedTimeZone zt))
