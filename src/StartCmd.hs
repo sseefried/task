@@ -58,10 +58,12 @@ startCmd zt args = do
   let descr = T.pack $ nonOpts !! 0
   rs <- readRecordSet
   exitWithErrorIf (isJust $ R.current rs) "There is already a current task. Run 'task clear'."
-  let lastFinish = R.recFinish . R.last $ rs
-  exitWithErrorIf (lastFinish >= start)
+  -- Check if it overlaps with any previous tasks.
+  when (not . R.null $ rs) $ do
+    let lastFinish = R.recFinish . R.last $ rs
+    exitWithErrorIf (lastFinish >= start)
     -- FIXME: Clean up
-    (printf "Can't start a task at this time since the last record's finish time is at '%s'."
+      (printf "Can't start a task at this time since the last record's finish time is at '%s'."
       (prettyTime lastFinish (zonedTimeZone zt)))
   writeCurrentRecord $ R.CurrentRecord descr start keyValues
   printf "Creating new task at '%s' with description '%s'.\n"
