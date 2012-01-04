@@ -50,7 +50,7 @@ startCmdOpts zt =
 startCmd :: ZonedTime -> [String] -> IO ()
 startCmd zt args = do
   let (opts, nonOpts, errors) = getOptEither Permute (startCmdOpts zt) args
-  exitWithErrorIf (length errors > 0) (unlines errors)
+  exitWithErrorIf' (length errors > 0) (unlines errors)
   exitWithErrorIf (length nonOpts == 0) "You must provide a description for this task."
   exitWithErrorIf (length nonOpts /= 1) "There can only be one description for this task."
   start        <- getStartTime opts
