@@ -46,6 +46,7 @@ finishCmdOpts zt =
 finishCmd :: ZonedTime -> [String] -> IO ()
 finishCmd zt args = do
   let (opts, nonOpts, errors) = getOptEither Permute (finishCmdOpts zt) args
+  exitWithErrorIf' (length errors > 0) (unlines errors)
   exitWithErrorIf (length nonOpts > 0) (printf "Unknown parameters '%s'" (show nonOpts))
   rs <- readRecordSet
   exitWithErrorIf (not . R.isCurrent $ rs) "There is no current task. Run 'task start'."
