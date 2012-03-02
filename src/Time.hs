@@ -5,6 +5,7 @@ module Time (
 
 -- standard libraries
 import Data.Time
+import Data.Time.Format
 import System.Locale (defaultTimeLocale)
 import Text.Printf
 
@@ -38,6 +39,9 @@ parseTaskTime zt s
 --
 -- Converts UTC to local time and then pretty prints it
 --
-prettyTime :: UTCTime -> TimeZone -> String
-prettyTime t tz = formatTime defaultTimeLocale "%a, %d %b %y %H:%M:%S"
+prettyTime :: TimeZone -> UTCTime -> String
+prettyTime tz t = formatTime defaultTimeLocale "%a, %d %b %y %H:%M:%S"
                     (utcToLocalTime tz t)
+
+isoTime :: TimeZone -> UTCTime -> String
+isoTime tz t = formatTime defaultTimeLocale "%F %X" (utcToLocalTime tz t)

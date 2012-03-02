@@ -64,10 +64,10 @@ startCmd zt args = do
     exitWithErrorIf (lastFinish >= start)
     -- FIXME: Clean up
       (printf "Can't start a task at this time since the last record's finish time is at '%s'."
-      (prettyTime lastFinish (zonedTimeZone zt)))
+      (prettyTime (zonedTimeZone zt) lastFinish))
   writeCurrentRecord $ R.CurrentRecord descr start keyValues
   printf "Creating new task at '%s' with description '%s'.\n"
-    (prettyTime start (zonedTimeZone zt))
+    (prettyTime (zonedTimeZone zt) start)
     (T.unpack descr)
 
 getStartTime :: [StartCmdFlag] -> IO UTCTime

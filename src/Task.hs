@@ -24,6 +24,7 @@ import StartCmd
 import ModifyCmd
 import ClearCmd
 import FinishCmd
+import ExportCmd
 
 import GetOpt
 
@@ -95,8 +96,9 @@ commands name zt =
         undefined
   , Cmd "export"
         "Export task data in a variety of formats"
-        (error "not defined")
-        undefined
+        (usageInfo (printf "Usage: %s export [<flags>...]\n\nFlags:" name)
+                   (exportCmdOpts zt))
+        (exportCmd zt)
   ]
 
 commandMap :: String -> ZonedTime -> Map String Command

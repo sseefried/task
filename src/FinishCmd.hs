@@ -56,7 +56,7 @@ finishCmd zt args = do
                   (printf "Finish time is the same as or before start time")
   rs' <- R.finishCurrent rs finish
   writeRecordSet rs'
-  printf "Finishing current task at '%s'\n" (prettyTime finish (zonedTimeZone zt))
+  printf "Finishing current task at '%s'\n" (prettyTime (zonedTimeZone zt) finish)
 
 
 
