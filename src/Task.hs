@@ -25,6 +25,7 @@ import ModifyCmd
 import ClearCmd
 import FinishCmd
 import ExportCmd
+import CurrentCmd
 
 import GetOpt
 
@@ -72,6 +73,10 @@ commands name zt =
         (usageInfo (printf "Usage: %s start [<flags>...]\n\nFlags:" name)
                    (startCmdOpts zt))
         (startCmd zt)
+  , Cmd "current"
+        "Describe the current task"
+        (usageInfo (printf "Usage: %s current" name) [])
+        (currentCmd zt)
   , Cmd "clear"
         "Clear current task"
         (printf "Usage: %s clear" name)
@@ -81,7 +86,6 @@ commands name zt =
         (usageInfo (printf "Usage: %s finish [<flags>...]\n\nFlags:" name)
                    (finishCmdOpts zt))
         (finishCmd zt)
-
   , Cmd "modify"
         "Modify a task entry"
         (error "not defined")
@@ -99,6 +103,7 @@ commands name zt =
         (usageInfo (printf "Usage: %s export [<flags>...]\n\nFlags:" name)
                    (exportCmdOpts zt))
         (exportCmd zt)
+
   ]
 
 commandMap :: String -> ZonedTime -> Map String Command

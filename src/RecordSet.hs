@@ -158,7 +158,6 @@ writeRecordSet rs = do
   let crStr = maybe "" (encode . toJSON) (current rs)
   BSL.writeFile currentRecordFilePath crStr
 
-
 readCurrentRecord :: IO (Maybe CurrentRecord)
 readCurrentRecord = do
   (_, currentRecordFilePath) <- checkAndGetFilePaths
