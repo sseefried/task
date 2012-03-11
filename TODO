@@ -1,0 +1,4 @@
+--help flag should work on each command
+
+- allow filtering on start/finish and key/value pairs in export
+- simplify parsing of key values pairs so that they don't need quotes around them.
