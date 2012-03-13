@@ -5,8 +5,8 @@ module FinishCmd (
 
 -- standard libraries
 
--- import Data.Text (Text)
--- import qualified Data.Text as T
+import Data.Text (Text)
+import qualified Data.Text as T
 import Text.Printf
 -- import System.Exit
 -- import Control.Monad
@@ -56,7 +56,8 @@ finishCmd zt args = do
                   (printf "Finish time is the same as or before start time")
   rs' <- R.finishCurrent rs finish
   writeRecordSet rs'
-  printf "Finishing current task at '%s'\n" (prettyTime (zonedTimeZone zt) finish)
+  printf "Finishing current task '%s' at '%s'\n" (T.unpack $ R.crecDescr current)
+         (prettyTime (zonedTimeZone zt) finish)
 
 
 
