@@ -37,4 +37,3 @@ Executable task
                  csv-enumerator
                  
   hs-source-dirs: src
-  ghc-options: -O
