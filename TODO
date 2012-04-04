@@ -2,3 +2,8 @@
 
 - allow filtering on start/finish and key/value pairs in export
 - simplify parsing of key values pairs so that they don't need quotes around them.
+
+List command
+------------
+
+Implement after and before

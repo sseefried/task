@@ -40,8 +40,11 @@ parseTaskTime zt s
 -- Converts UTC to local time and then pretty prints it
 --
 prettyTime :: TimeZone -> UTCTime -> String
-prettyTime tz t = formatTime defaultTimeLocale "%a, %d %b %y %H:%M:%S"
-                    (utcToLocalTime tz t)
+prettyTime = prettyFmtTime "%a, %d %b %y %H:%M:%S"
+
+prettyFmtTime :: String -> TimeZone -> UTCTime -> String
+prettyFmtTime fmt tz t = formatTime defaultTimeLocale fmt (utcToLocalTime tz t)
+
 
 isoTime :: TimeZone -> UTCTime -> String
 isoTime tz t = formatTime defaultTimeLocale "%F %X" (utcToLocalTime tz t)

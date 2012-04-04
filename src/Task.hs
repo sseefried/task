@@ -26,6 +26,7 @@ import ClearCmd
 import FinishCmd
 import ExportCmd
 import CurrentCmd
+import ListCmd
 
 import GetOpt
 
@@ -77,6 +78,11 @@ commands name zt =
         "Describe the current task"
         (usageInfo (printf "Usage: %s current" name) [])
         (currentCmd zt)
+  , Cmd "list"
+        "List the last few completed tasks"
+        (usageInfo (printf "Usage: %s list [<flags>...]\n\nFlags:" name)
+                   (listCmdOpts zt))
+        (listCmd zt)
   , Cmd "clear"
         "Clear current task"
         (printf "Usage: %s clear" name)
@@ -103,7 +109,6 @@ commands name zt =
         (usageInfo (printf "Usage: %s export [<flags>...]\n\nFlags:" name)
                    (exportCmdOpts zt))
         (exportCmd zt)
-
   ]
 
 commandMap :: String -> ZonedTime -> Map String Command

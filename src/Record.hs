@@ -8,7 +8,7 @@ module Record (
   -- functions on RecordSet
   newRecordId,
   insert, empty, length, head, last, null, add, records, findBetween,
-  setCurrent, current, isCurrent, clearCurrent, finishCurrent
+  setCurrent, current, isCurrent, clearCurrent, finishCurrent, lastN
 ) where
 
 -- standard libraries
@@ -50,11 +50,10 @@ data Record =
 data RecordSet =
   RecordSet { rsSeq     :: Seq Record
             , rsMap     :: Map Text Record
-            , rsCurrent :: Maybe CurrentRecord}
+            , rsCurrent :: Maybe CurrentRecord }
 
 instance Show RecordSet where
   show (RecordSet s _ c) = printf "RecordSet { rsSeq = %s, rsCurrent = %s }" (show s) (show c)
-
 
 --
 -- | Creates a new unique Id for a record in a record set.
@@ -76,7 +75,6 @@ newRecordId rs = do
   case M.lookup s (rsMap rs) of
      Just _  -> newRecordId rs
      Nothing -> return s
-
 
 --
 -- | @insert r rs@ inserts record @r@ at the first point in sequence @rs@
@@ -114,6 +112,10 @@ head :: RecordSet -> Record
 head rs = case S.viewl (rsSeq rs) of
   S.EmptyL -> error "RecordSet.head: empty RecordSet"
   r S.:< _ -> r
+
+lastN :: Int -> RecordSet -> [Record]
+lastN n rs = toList . snd $ S.splitAt (max 0 (S.length s - n)) s
+  where s = rsSeq rs
 
 last :: RecordSet -> Record
 last rs = case S.viewr (rsSeq rs) of

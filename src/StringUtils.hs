@@ -1,7 +1,13 @@
 module StringUtils where
 
 import Data.List
+import Data.Maybe (listToMaybe)
 
+--
+-- Turns a String into an Int, maybe. Death to exceptions in pure code!
+--
+maybeRead :: Read a => String -> Maybe a
+maybeRead = fmap fst . listToMaybe . reads
 
 -- Removes all leading and trailing whitespace from a String
 strip :: String -> String
