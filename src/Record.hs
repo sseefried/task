@@ -2,7 +2,7 @@
 module Record (
   Record(..), CurrentRecord(..),
   -- functions on records
-  overlap, validateRecord, duration,
+  overlap, validateRecord, duration, prettyRecord,
   -- abstract data type RecordSet
   RecordSet,
   -- functions on RecordSet
@@ -28,6 +28,11 @@ import Text.Printf
 
 import Data.Maybe
 import System.Random (randomRIO)
+
+import Data.List (intersperse)
+
+-- friends
+import Time
 
 data CurrentRecord =
   CurrentRecord { crecDescr     :: Text -- description
@@ -196,6 +201,17 @@ isAfter r r' = recStart r >= recFinish r'
 
 duration :: Record -> Integer
 duration r = round $ diffUTCTime (recFinish r) (recStart r)
+
+prettyRecord :: ZonedTime -> Record -> String
+prettyRecord zt r = printf "%s - %s: %s (%s)\n"
+                      (pt recStart)
+                      (pt recFinish)
+                      (T.unpack . recDescr $ r)
+                      (T.unpack . T.concat . intersperse ", " . map join $ recKeyValues r)
+  where
+    pt f = prettyTime (zonedTimeZone zt) (f r)
+    join (t,t') = t `T.append` ":" `T.append` t'
+
 
 ----------------------------------------------------------------------------------------------
 -- Functions on RecordSets

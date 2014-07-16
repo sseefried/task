@@ -63,8 +63,10 @@ queryCmd zt args = do
   keyRegex                <- getKeyRegex flags
   valueRegex              <- getValueRegex flags
   rs                      <- readRecordSet
-  let t = totalInSeconds (startTime, finishTime) keyRegex valueRegex rs
-  printf "Total time: %s\n" (daysHoursMinutesSeconds t)
+  let (t,recs) = totalInSeconds (startTime, finishTime) keyRegex valueRegex rs
+  mapM_ (putStr . R.prettyRecord zt) recs
+
+  printf "----\nTotal time: %s\n" (daysHoursMinutesSeconds t)
 
 -- Order of flags is important. Later flags override earlier ones.
 getStartAndFinishTime :: [QueryCmdFlag] -> IO (UTCTime, UTCTime)
@@ -90,10 +92,11 @@ getValueRegex flags = foldM go ".*" flags
 
 ------------
 
-totalInSeconds :: (UTCTime, UTCTime) -> Text -> Text -> RecordSet -> Integer
+totalInSeconds :: (UTCTime, UTCTime) -> Text -> Text -> RecordSet -> (Integer, [Record])
 totalInSeconds (s,f) keyRegex valueRegex rs =
-  foldl go 0 . filter recMatches $  R.findBetween s f rs
+  (foldl go 0 recs, recs)
   where
+    recs = filter recMatches $  R.findBetween s f rs
     go :: Integer -> Record -> Integer
     go total r = total + R.duration r
     recMatches :: Record -> Bool

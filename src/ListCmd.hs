@@ -65,18 +65,7 @@ listCmd zt args = do
   limit <- getLimit opts
   rs    <- readRecordSet
   let records = R.lastN limit rs
-  mapM_ (prettyRecord zt) records
-
-
-prettyRecord :: ZonedTime -> Record -> IO ()
-prettyRecord zt r = printf "%s - %s: %s (%s)\n"
-                      (pt R.recStart)
-                      (pt R.recFinish)
-                      (T.unpack . R.recDescr $ r)
-                      (T.unpack . T.concat . intersperse ", " . map join $ R.recKeyValues r)
-  where
-    pt f = prettyTime (zonedTimeZone zt) (f r)
-    join (t,t') = t `T.append` ":" `T.append` t'
+  mapM_ (putStr . R.prettyRecord zt) records
 
 getLimit :: [ListCmdFlag] -> IO Int
 getLimit flags
