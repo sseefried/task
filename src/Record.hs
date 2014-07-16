@@ -2,9 +2,9 @@
 module Record (
   Record(..), CurrentRecord(..),
   -- functions on records
-  overlap, validateRecord, 
+  overlap, validateRecord, duration,
   -- abstract data type RecordSet
-  RecordSet, 
+  RecordSet,
   -- functions on RecordSet
   newRecordId,
   insert, empty, length, head, last, null, add, records, findBetween,
@@ -176,6 +176,11 @@ rs |> r = rs { rsSeq = rsSeq rs S.|> r, rsMap = M.insert (recId r) r (rsMap rs) 
 notUniqueIn :: Record -> RecordSet -> Bool
 notUniqueIn r rs = isJust $ M.lookup (recId r) (rsMap rs)
 
+----------------------------------------------------------------------------------------------
+-- Functions on Records
+-----------------------
+
+
 --
 -- There is overlap if the start or the finish of the second record
 -- lies between the start and finish of the first record.
@@ -188,6 +193,13 @@ overlap r r' = inBoundary (recStart r') || inBoundary (recFinish r')
 -- | Checks whether @r@ occurs after @r'@
 isAfter :: Record -> Record -> Bool
 isAfter r r' = recStart r >= recFinish r'
+
+duration :: Record -> Integer
+duration r = round $ diffUTCTime (recFinish r) (recStart r)
+
+----------------------------------------------------------------------------------------------
+-- Functions on RecordSets
+--------------------------
 
 --
 -- Finishes the current task in the record set, if and only if,

@@ -11,7 +11,7 @@ import Control.Monad
 import Data.Time
 import Data.Maybe (mapMaybe, isJust)
 import Data.Either (either)
-import Data.CSV.Enumerator 
+import Data.CSV.Enumerator
 import qualified Data.ByteString.Char8 as BS
 import Data.List (intersperse)
 
@@ -61,6 +61,7 @@ exportCmd zt args = do
                                           (concat . intersperse ", " $ nonOpts))
   let [ filename ] = nonOpts
   rs <- readRecordSet
+  -- FIXME: Set these from command line arguments
   finishTime <- getCurrentTime
   let startTime = addUTCTime (-100*365*86400) finishTime -- a century ago
   exportRecordsToCSV (zonedTimeZone zt) startTime finishTime rs
@@ -74,6 +75,7 @@ exportRecordsToCSV tz startTime finishTime rs = do
 recordToRow :: TimeZone -> Record -> Row
 recordToRow tz r = [ (g . R.recStart  $ r),
                      (g . R.recFinish $ r),
+                     (f . T.pack . show . R.duration  $ r),
                      (f . R.recDescr  $ r) ] ++ map h (R.recKeyValues r)
   where
     f = encodeUtf8

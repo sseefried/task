@@ -20,13 +20,14 @@ import StringUtils
 import Time
 
 -- The commands
-import StartCmd 
+import StartCmd
 import ModifyCmd
 import ClearCmd
 import FinishCmd
 import ExportCmd
 import CurrentCmd
 import ListCmd
+import QueryCmd
 
 import GetOpt
 
@@ -102,8 +103,8 @@ commands name zt =
         undefined
   , Cmd "query"
         "Query task entries"
-        (error "not defined")
-        undefined
+        (usageInfo (printf "Usage: %s query" name) (queryCmdOpts zt))
+        (queryCmd zt)
   , Cmd "export"
         "Export task data in a variety of formats"
         (usageInfo (printf "Usage: %s export [<flags>...]\n\nFlags:" name)
