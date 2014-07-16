@@ -49,15 +49,19 @@ prettyFmtTime fmt tz t = formatTime defaultTimeLocale fmt (utcToLocalTime tz t)
 isoTime :: TimeZone -> UTCTime -> String
 isoTime tz t = formatTime defaultTimeLocale "%F %X" (utcToLocalTime tz t)
 
+sameDayAs :: TimeZone -> UTCTime -> UTCTime -> Bool
+sameDayAs tz t t' =  f t == f t'
+  where f = prettyFmtTime "%d %b %Y" tz
+
 daysHoursMinutesSeconds :: Integer -> String
 daysHoursMinutesSeconds s =
   let (days,s') = s `divMod` 86400
       (hours,s'') = s' `divMod` 3600
       (mins, secs) = s'' `divMod` 60
-  in if days  > 0 then printf "%dd %02dh %02dm %02ds" days hours mins secs
-     else (if hours > 0 then printf "%02dh %02dm %02ds" hours mins secs
-     else (if mins > 0 then printf "%02dh %02ds" mins secs
-     else printf "%02d s" secs))
+  in if       days  > 0 then printf "%dd%02dh%02dm%02ds" days hours mins secs
+     else (if hours > 0 then printf      "%dh%02dm%02ds" hours mins secs
+     else (if mins > 0 then  printf           "%dm%02ds" mins secs
+     else                    printf                "%ds" secs))
 
 
 

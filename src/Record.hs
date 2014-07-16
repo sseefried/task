@@ -203,13 +203,16 @@ duration :: Record -> Integer
 duration r = round $ diffUTCTime (recFinish r) (recStart r)
 
 prettyRecord :: ZonedTime -> Record -> String
-prettyRecord zt r = printf "%s - %s: %s (%s)\n"
+prettyRecord zt r = printf "%s - %s: %s: %s (%s)\n"
                       (pt recStart)
-                      (pt recFinish)
+                      (if sameDayAs (zonedTimeZone zt) (recStart r) (recFinish r)
+                       then pt' recFinish else pt recFinish)
+                      (printf "%9s" (daysHoursMinutesSeconds . duration $ r) :: String)
                       (T.unpack . recDescr $ r)
                       (T.unpack . T.concat . intersperse ", " . map join $ recKeyValues r)
   where
-    pt f = prettyTime (zonedTimeZone zt) (f r)
+    pt f  = prettyTime               (zonedTimeZone zt) (f r)
+    pt' f = prettyFmtTime "%H:%M:%S" (zonedTimeZone zt) (f r)
     join (t,t') = t `T.append` ":" `T.append` t'
 
 
