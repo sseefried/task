@@ -6,7 +6,7 @@ module Record (
   -- abstract data type RecordSet
   RecordSet,
   -- functions on RecordSet
-  newRecordId,
+  newRecord,
   insert, empty, length, head, last, null, add, records, findBetween,
   setCurrent, current, isCurrent, clearCurrent, finishCurrent, lastN
 ) where
@@ -46,6 +46,8 @@ data Record =
          , recFinish    :: UTCTime
          , recKeyValues :: [ (Text, Text) ] } deriving Show
 
+
+
 --
 -- Abstract data type for record sets
 --
@@ -82,6 +84,15 @@ newRecordId rs = do
      Nothing -> return s
 
 --
+-- Create a new record
+--
+newRecord :: RecordSet -> Text -> UTCTime -> UTCTime -> [(Text, Text)] -> IO Record
+newRecord rs descr start finish keyValues = do
+    recId <- newRecordId rs
+    return $ Record { recId = recId, recDescr = descr, recStart = start,
+                      recFinish = finish, recKeyValues = keyValues }
+
+--
 -- | @insert r rs@ inserts record @r@ at the first point in sequence @rs@
 -- where @r@ is after a record.
 --
@@ -89,14 +100,16 @@ insert :: Record -> RecordSet -> Either String RecordSet
 insert r rs
   | canInsert = Right $ rs  { rsSeq = (rsL S.|> r) S.>< rsR
                             , rsMap = M.insert (recId r) r (rsMap rs)}
-  | otherwise =
-    Left  $ printf "Record '%s' can't be inserted at any point in the record set" (show r)
+  | otherwise = Left $ printf "Record '%s' can't be inserted at any point in the record set" (show r)
   where
-    canInsert = case S.viewl rsR of
+    canInsert = (case S.viewl rsR of
                   S.EmptyL    -> True
-                  rR S.:< _   -> rR `isAfter` r
+                  rR S.:< _   -> r `isBefore` rR) &&
+                (case S.viewr rsL of
+                  S.EmptyR    -> True
+                  _ S.:> rL   -> r `isAfter` rL)
     s = rsSeq rs
-    (rsL,rsR) = S.breakl (r `isAfter`) s
+    (rsL,rsR) = S.breakl (`isAfter` r) s
 
 --
 -- | Finds all records that fit entirely between @start@ and @finish@ inclusive.
@@ -199,6 +212,10 @@ overlap r r' = inBoundary (recStart r') || inBoundary (recFinish r')
 isAfter :: Record -> Record -> Bool
 isAfter r r' = recStart r >= recFinish r'
 
+-- | Checks whether @r@ occurs before @r'@
+isBefore :: Record -> Record -> Bool
+isBefore = flip isAfter
+
 duration :: Record -> Integer
 duration r = round $ diffUTCTime (recFinish r) (recStart r)
 
@@ -214,7 +231,6 @@ prettyRecord zt r = printf "%s - %s: %s: %s (%s)\n"
     pt f  = prettyTime               (zonedTimeZone zt) (f r)
     pt' f = prettyFmtTime "%H:%M:%S" (zonedTimeZone zt) (f r)
     join (t,t') = t `T.append` ":" `T.append` t'
-
 
 ----------------------------------------------------------------------------------------------
 -- Functions on RecordSets
@@ -241,6 +257,8 @@ finishCurrent rs t = do
         Left _     -> return rs -- return the original
         Right rs'' -> return rs''
     Nothing -> return rs
+
+
 --
 -- Either returns the record (because it is valid) or returns an error message.
 --

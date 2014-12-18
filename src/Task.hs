@@ -28,6 +28,7 @@ import ExportCmd
 import CurrentCmd
 import ListCmd
 import QueryCmd
+import InsertCmd
 
 import GetOpt
 
@@ -88,6 +89,10 @@ commands name zt =
         "Clear current task"
         (printf "Usage: %s clear" name)
         clearCmd
+  , Cmd "insert"
+        "Insert a task"
+        (insertCmdUsage name)
+        (insertCmd zt)
   , Cmd "finish"
         "Finish current task"
         (usageInfo (printf "Usage: %s finish [<flags>...]\n\nFlags:" name)

@@ -55,13 +55,12 @@ sameDayAs tz t t' =  f t == f t'
 
 daysHoursMinutesSeconds :: Integer -> String
 daysHoursMinutesSeconds s =
-  let (days,s') = s `divMod` 86400
-      (hours,s'') = s' `divMod` 3600
-      (mins, secs) = s'' `divMod` 60
-  in if       days  > 0 then printf "%dd%02dh%02dm%02ds" days hours mins secs
-     else (if hours > 0 then printf      "%dh%02dm%02ds" hours mins secs
-     else (if mins > 0 then  printf           "%dm%02ds" mins secs
-     else                    printf                "%ds" secs))
+  let (hours,s')   = s  `divMod` 3600
+      (mins, secs) = s' `divMod` 60
+  in if      hours > 0 then printf      "%dh%02dm%02ds" hours mins secs
+     else (if mins > 0 then printf           "%dm%02ds" mins secs
+     else                   printf                "%ds" secs)
 
 
-
+secondsToHours :: Integer -> String
+secondsToHours s = printf "%.2f" (fromIntegral s / 3600.0 :: Double)

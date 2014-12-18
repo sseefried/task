@@ -75,8 +75,8 @@ exportRecordsToCSV tz startTime finishTime rs = do
 recordToRow :: TimeZone -> Record -> Row
 recordToRow tz r = [ (g . R.recStart  $ r),
                      (g . R.recFinish $ r),
-                     (f . T.pack . show . R.duration  $ r),
-                     (f . R.recDescr  $ r) ] ++ map h (R.recKeyValues r)
+                     (f . R.recDescr  $ r),
+                     (f . T.pack . show . R.duration  $ r) ] ++ map h (R.recKeyValues r)
   where
     f = encodeUtf8
     g = BS.pack . isoTime tz

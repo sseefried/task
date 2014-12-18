@@ -66,7 +66,7 @@ queryCmd zt args = do
   let (t,recs) = totalInSeconds (startTime, finishTime) keyRegex valueRegex rs
   mapM_ (putStr . R.prettyRecord zt) recs
 
-  printf "----\nTotal time: %s\n" (daysHoursMinutesSeconds t)
+  printf "----\nTotal time: %s (%s hours) \n" (daysHoursMinutesSeconds t) (secondsToHours t)
 
 -- Order of flags is important. Later flags override earlier ones.
 getStartAndFinishTime :: [QueryCmdFlag] -> IO (UTCTime, UTCTime)

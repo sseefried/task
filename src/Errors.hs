@@ -4,6 +4,9 @@ import Control.Monad (when)
 import System.Exit (exitWith, ExitCode(..))
 
 
+exitWithError :: String -> IO a
+exitWithError s = putStrLn s >> exitWith (ExitFailure 1)
+
 --
 -- Adds a new line on the end of the error message.
 --
