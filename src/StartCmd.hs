@@ -36,7 +36,7 @@ data StartCmdFlag =
 startCmdOpts :: ZonedTime -> [OptDescr (Either String StartCmdFlag)]
 startCmdOpts zt =
     [ Option "t" ["time"]      (OptArg timeToStartCmd "time") "start at time"
-    , Option "k" ["key-value"] (OptArg keyValueToStartCmd "key/value") "key/value" ]
+    , Option "k" ["key/value"] (OptArg keyValueToStartCmd "key/value") "key/value" ]
   where
     timeToStartCmd :: Maybe String -> Either String StartCmdFlag
     timeToStartCmd = maybe (Left "You have not provided a time argument.")

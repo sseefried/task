@@ -91,7 +91,7 @@ commands name zt =
         clearCmd
   , Cmd "insert"
         "Insert a task"
-        (insertCmdUsage name)
+        (insertCmdUsage name zt)
         (insertCmd zt)
   , Cmd "finish"
         "Finish current task"

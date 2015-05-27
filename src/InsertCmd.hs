@@ -27,12 +27,15 @@ data InsertCmdFlag =
     InsertCmdKeyValue (Text, Text)
 
 
-insertCmdUsage :: String -> String
-insertCmdUsage name = printf "Usage: %s <start time> <finish time> <description>" name
+insertCmdUsage :: String -> ZonedTime -> String
+insertCmdUsage name zt =
+        (usageInfo (printf "Usage: %s <start time> <finish time> <description>\n\nFlags:" name)
+                   (insertCmdOpts zt))
+
 
 insertCmdOpts :: ZonedTime -> [OptDescr (Either String InsertCmdFlag)]
 insertCmdOpts zt =
-   [ Option "k" ["key-value"] (OptArg keyValueToInsertCmd "key/value") "key/value" ]
+   [ Option "k" ["key/value"] (OptArg keyValueToInsertCmd "key/value") "key/value" ]
   where
     keyValueToInsertCmd :: Maybe String -> Either String InsertCmdFlag
     keyValueToInsertCmd = maybe (Left "You have not provided a key/value argument.")
@@ -43,7 +46,7 @@ insertCmd zt args = do
   let (opts, nonOpts, errors) = getOptEither Permute (insertCmdOpts zt) args
   let keyValues = getKeyValues opts
   exitWithErrorIf' (length errors > 0) (unlines errors)
-  exitWithErrorIf (length nonOpts /= 3) (insertCmdUsage "task")
+  exitWithErrorIf (length nonOpts /= 3) (insertCmdUsage "task" zt)
   let [startStr, finishStr, descr] = nonOpts
   start  <- parseTimeOrExit zt "start time: "  startStr
   finish <- parseTimeOrExit zt "finish time: " finishStr
